@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parallax — Exploration Spatiale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020408;
+    --bg2: #060d18;
+    --bg3: #0a1628;
+    --card: #0d1e35;
+    --neon: #4dc3f7;
+    --neon2: #7c4dff;
+    --neon3: #f74d8a;
+    --text: #c8e6f5;
+    --text2: #7aa0bb;
+    --border: rgba(77, 195, 247, 0.18);
+    --glow: rgba(77, 195, 247, 0.25);
+    --r: 10px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
+
+  /* ── STARFIELD ── */
+  #starfield {
+    position: fixed; inset: 0; z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ── LAYOUT ── */
+  #app {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column;
+    height: 100vh; overflow: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 28px;
+    height: 58px; min-height: 58px;
+    background: rgba(2, 4, 8, 0.85);
+    backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .logo {
+    font-family: 'Sora', sans-serif;
+    font-size: 1.15rem; font-weight: 700;
+    color: var(--neon);
+    letter-spacing: 0.08em;
+    margin-right: 18px;
+    white-space: nowrap;
+  }
+  .logo span { color: var(--neon2); }
+  .tabs { display: flex; gap: 4px; flex: 1; }
+  .tab {
+    padding: 7px 14px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text2);
+    font-family: 'Sora', sans-serif;
+    font-size: 0.78rem; font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--neon); border-color: var(--border); }
+  .tab.active {
+    color: var(--neon); background: rgba(77,195,247,0.1);
+    border-color: rgba(77,195,247,0.35);
+    box-shadow: 0 0 14px rgba(77,195,247,0.15);
+  }
+  #clock {
+    font-family: 'Sora', sans-serif;
+    font-size: 0.75rem; color: var(--text2);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    margin-left: auto;
+  }
+
+  /* ── ISS BAR ── */
+  #iss-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 5px 28px;
+    background: rgba(124, 77, 255, 0.08);
+    border-bottom: 1px solid rgba(124,77,255,0.2);
+    font-size: 0.72rem; color: var(--text2);
+    flex-shrink: 0;
+  }
+  .iss-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #7c4dff;
+    box-shadow: 0 0 8px #7c4dff;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  #iss-bar b { color: #a07af7; font-family: 'Sora', sans-serif; font-weight: 600; }
+
+  /* ── PANELS ── */
+  .panel {
+    display: none; flex: 1; overflow: hidden;
+  }
+  .panel.active { display: flex; }
+
+  /* ═══════════════════════════════════
+     PANEL 1 — SOLAR SYSTEM
+  ═══════════════════════════════════ */
+  #panel-systeme {
+    flex-direction: row; gap: 0;
+    overflow: hidden;
+  }
+  #canvas-wrap {
+    flex: 1; position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #solarCanvas { display: block; }
+
+  /* Speed controls */
+  #speed-controls {
+    position: absolute; bottom: 18px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(6,13,24,0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 30px;
+    padding: 6px 16px;
+    font-size: 0.7rem;
+  }
+  #speed-controls span { color: var(--text2); font-family:'Sora',sans-serif; margin-right: 4px; }
+  .spd-btn {
+    padding: 4px 11px; border-radius: 20px;
+    border: 1px solid transparent;
+    background: transparent; color: var(--text2);
+    font-family: 'Sora', sans-serif; font-size: 0.68rem; font-weight: 600;
+    cursor: pointer; transition: all 0.18s;
+  }
+  .spd-btn:hover { color: var(--neon); border-color: var(--border); }
+  .spd-btn.active { color: var(--neon); background: rgba(77,195,247,0.12); border-color: rgba(77,195,247,0.4); }
+
+  /* Planet legend */
+  #legend {
+    position: absolute; top: 14px; left: 14px;
+    display: flex; flex-direction: column; gap: 5px;
+    background: rgba(6,13,24,0.75);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 10px 14px;
+    font-size: 0.67rem;
+  }
+  .leg-item { display: flex; align-items: center; gap: 7px; color: var(--text2); cursor: pointer; transition: color 0.15s; }
+  .leg-item:hover { color: var(--text); }
+  .leg-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Planet info panel */
+  #planet-info {
+    width: 300px; min-width: 300px;
+    background: rgba(6,13,24,0.7);
+    backdrop-filter: blur(18px);
+    border-left: 1px solid var(--border);
+    padding: 28px 22px;
+    display: flex; flex-direction: column; gap: 18px;
+    overflow-y: auto;
+    transition: all 0.3s;
+  }
+  #planet-info.empty { opacity: 0.5; }
+  .pi-name {
+    font-family: 'Sora', sans-serif;
+    font-size: 1.6rem; font-weight: 700;
+    color: var(--neon);
+  }
+  .pi-subtitle { font-size: 0.75rem; color: var(--text2); font-family:'Sora',sans-serif; }
+  .pi-divider { height: 1px; background: var(--border); }
+  .pi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pi-stat { background: rgba(77,195,247,0.05); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .pi-stat-label { font-size: 0.63rem; color: var(--text2); font-family:'Sora',sans-serif; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .pi-stat-value { font-size: 0.88rem; font-weight: 500; color: var(--text); }
+  .pi-fact { background: rgba(124,77,255,0.08); border: 1px solid rgba(124,77,255,0.25); border-radius: 8px; padding: 14px; font-size: 0.78rem; color: var(--text2); line-height: 1.6; }
+  .pi-fact b { color: #a07af7; font-family:'Sora',sans-serif; display: block; margin-bottom: 4px; }
+  .pi-hint { font-size: 0.68rem; color: var(--text2); text-align: center; opacity: 0.6; }
+
+  /* ═══════════════════════════════════
+     PANEL 2 — DISCOVERIES
+  ═══════════════════════════════════ */
+  #panel-decouvertes {
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 24px 32px;
+    gap: 20px;
+  }
+  .neo-banner {
+    background: linear-gradient(135deg, rgba(247,77,138,0.12), rgba(247,77,138,0.05));
+    border: 1px solid rgba(247,77,138,0.35);
+    border-radius: var(--r);
+    padding: 16px 22px;
+    display: flex; align-items: center; gap: 14px;
+    flex-shrink: 0;
+  }
+  .neo-icon { font-size: 1.6rem; }
+  .neo-text h3 { font-family:'Sora',sans-serif; font-size:0.9rem; color:#f74d8a; margin-bottom:4px; }
+  .neo-text p { font-size:0.78rem; color:var(--text2); }
+  #neo-list { font-size:0.76rem; color:#f7a0b8; font-family:'Sora',sans-serif; }
+
+  .section-title {
+    font-family:'Sora',sans-serif; font-size:1rem; font-weight:700;
+    color:var(--text); margin-bottom:2px;
+  }
+  .disc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+  .disc-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 18px;
+    transition: all 0.2s;
+    cursor: default;
+  }
+  .disc-card:hover { border-color: rgba(77,195,247,0.45); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(77,195,247,0.08); }
+  .disc-tag {
+    display: inline-flex; align-items: center;
+    padding: 3px 9px; border-radius: 20px;
+    font-family:'Sora',sans-serif; font-size:0.62rem; font-weight:600; letter-spacing:0.05em;
+    margin-bottom: 10px;
+  }
+  .tag-exo { background: rgba(77,195,247,0.12); color: var(--neon); border: 1px solid rgba(77,195,247,0.3); }
+  .tag-neo { background: rgba(247,77,138,0.12); color: #f74d8a; border: 1px solid rgba(247,77,138,0.3); }
+  .tag-grav { background: rgba(124,77,255,0.12); color: #a07af7; border: 1px solid rgba(124,77,255,0.3); }
+  .tag-img  { background: rgba(248,195,54,0.12); color: #f8c336; border: 1px solid rgba(248,195,54,0.3); }
+  .disc-title { font-family:'Sora',sans-serif; font-size:0.88rem; font-weight:600; color:var(--text); margin-bottom:7px; }
+  .disc-body { font-size:0.76rem; color:var(--text2); line-height:1.65; }
+  .disc-date { font-size:0.65rem; color:var(--text2); margin-top:10px; opacity:0.6; }
+
+  /* ═══════════════════════════════════
+     PANEL 3 — MISSIONS
+  ═══════════════════════════════════ */
+  #panel-missions {
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 24px 32px;
+    gap: 16px;
+  }
+  .missions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+  }
+  .mission-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 20px;
+    transition: all 0.2s;
+  }
+  .mission-card:hover { border-color: rgba(77,195,247,0.4); transform: translateY(-2px); box-shadow: 0 8px 28px rgba(77,195,247,0.07); }
+  .mission-header { display:flex; align-items:flex-start; gap:14px; margin-bottom:12px; }
+  .mission-icon { font-size: 2rem; flex-shrink:0; }
+  .mission-name { font-family:'Sora',sans-serif; font-size:0.95rem; font-weight:700; color:var(--neon); }
+  .mission-agency { font-size:0.68rem; color:var(--text2); margin-top:2px; font-family:'Sora',sans-serif; }
+  .mission-status {
+    display:inline-flex; align-items:center; gap:5px;
+    padding: 3px 9px; border-radius:20px;
+    font-family:'Sora',sans-serif; font-size:0.6rem; font-weight:600; letter-spacing:0.05em;
+    margin-bottom: 10px;
+  }
+  .status-active { background: rgba(77,247,140,0.1); color:#4df78c; border:1px solid rgba(77,247,140,0.3); }
+  .status-progress { background: rgba(248,195,54,0.1); color:#f8c336; border:1px solid rgba(248,195,54,0.3); }
+  .status-deep { background: rgba(77,195,247,0.1); color:var(--neon); border:1px solid rgba(77,195,247,0.3); }
+  .mission-body { font-size:0.77rem; color:var(--text2); line-height:1.65; }
+  .mission-stats { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .m-stat { background: rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:0.68rem; }
+  .m-stat-label { color:var(--text2); margin-bottom:2px; }
+  .m-stat-value { color:var(--text); font-weight:500; font-family:'Sora',sans-serif; }
+
+  /* ═══════════════════════════════════
+     PANEL 4 — APOD
+  ═══════════════════════════════════ */
+  #panel-apod {
+    flex-direction: row;
+    overflow: hidden;
+  }
+  #apod-img-wrap {
+    flex: 1; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    background: #000;
+    position: relative;
+  }
+  #apod-img {
+    max-width: 100%; max-height: 100%;
+    object-fit: contain;
+    transition: opacity 0.5s;
+  }
+  #apod-video { width:100%; height:100%; border:none; }
+  #apod-sidebar {
+    width: 340px; min-width: 340px;
+    background: rgba(6,13,24,0.8);
+    backdrop-filter: blur(18px);
+    border-left: 1px solid var(--border);
+    padding: 28px 24px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .apod-date { font-family:'Sora',sans-serif; font-size:0.7rem; color:var(--neon2); letter-spacing:0.06em; }
+  .apod-title { font-family:'Sora',sans-serif; font-size:1.25rem; font-weight:700; color:var(--text); line-height:1.35; }
+  .apod-copyright { font-size:0.68rem; color:var(--text2); }
+  .apod-explanation { font-size:0.78rem; color:var(--text2); line-height:1.75; }
+  .apod-loading { display:flex; align-items:center; justify-content:center; height:100%; flex-direction:column; gap:14px; color:var(--text2); font-family:'Sora',sans-serif; font-size:0.85rem; }
+  .spinner { width:32px; height:32px; border:2px solid var(--border); border-top-color:var(--neon); border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(77,195,247,0.2); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(77,195,247,0.4); }
+</style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+
+<div id="app">
+  <!-- NAV -->
+  <nav>
+    <div class="logo">✦ PARA<span>LLAX</span></div>
+    <div class="tabs">
+      <button class="tab active" data-tab="systeme">Système Solaire</button>
+      <button class="tab" data-tab="decouvertes">Découvertes</button>
+      <button class="tab" data-tab="missions">Missions</button>
+      <button class="tab" data-tab="apod">Photo du Jour</button>
+    </div>
+    <div id="clock">—</div>
+  </nav>
+
+  <!-- ISS BAR -->
+  <div id="iss-bar">
+    <div class="iss-dot"></div>
+    <b>ISS en orbite</b>
+    <span id="iss-coords">Chargement des coordonnées…</span>
+    <span style="margin-left:auto;opacity:0.5;">Altitude : <span id="iss-alt">—</span> km · Vitesse : <span id="iss-vel">—</span> km/h</span>
+  </div>
+
+  <!-- PANEL: SOLAR SYSTEM -->
+  <div id="panel-systeme" class="panel active">
+    <div id="canvas-wrap">
+      <canvas id="solarCanvas"></canvas>
+      <div id="legend"></div>
+      <div id="speed-controls">
+        <span>Vitesse :</span>
+        <button class="spd-btn active" data-speed="1">Temps réel</button>
+        <button class="spd-btn" data-speed="86400">1 j/s</button>
+        <button class="spd-btn" data-speed="2592000">1 mois/s</button>
+        <button class="spd-btn" data-speed="31536000">1 an/s</button>
+      </div>
+    </div>
+    <div id="planet-info" class="empty">
+      <div class="pi-name">Système Solaire</div>
+      <div class="pi-subtitle">Cliquez sur une planète pour explorer</div>
+      <div class="pi-divider"></div>
+      <div class="pi-fact">
+        <b>✦ Le Saviez-vous ?</b>
+        Notre système solaire a 4,6 milliards d'années. Le Soleil contient 99,86 % de toute la masse du système.
+      </div>
+      <div class="pi-fact">
+        <b>✦ Échelle</b>
+        Si le Soleil avait la taille d'une porte standard, Jupiter serait un pamplemousse à 300 m de distance — et la Terre un petit pois à 26 m.
+      </div>
+      <div class="pi-hint">↑ Utilisez les boutons de vitesse pour accélérer le temps</div>
+    </div>
+  </div>
+
+  <!-- PANEL: DISCOVERIES -->
+  <div id="panel-decouvertes" class="panel">
+    <div class="neo-banner">
+      <div class="neo-icon">☄️</div>
+      <div class="neo-text">
+        <h3>Objets Géocroiseurs (NEO) — Surveillance Active</h3>
+        <p id="neo-list">Chargement des données NASA…</p>
+      </div>
+    </div>
+    <div class="section-title">Découvertes Récentes</div>
+    <div class="disc-grid">
+      <div class="disc-card">
+        <div class="disc-tag tag-exo">🌍 Exoplanète</div>
+        <div class="disc-title">TRAPPIST-1e — Zone Habitable Confirmée</div>
+        <div class="disc-body">Webb a détecté des signatures atmosphériques prometteuses sur TRAPPIST-1e, à 39 années-lumière. Des niveaux de CO₂ compatibles avec une biosphère potentielle ont été identifiés dans les spectres infrarouges.</div>
+        <div class="disc-date">📅 James Webb Space Telescope · 2024</div>
+      </div>
+      <div class="disc-card">
+        <div class="disc-tag tag-grav">🌀 Ondes Gravitationnelles</div>
+        <div class="disc-title">GW230529 — Fusion Étoile à Neutrons × Trou Noir</div>
+        <div class="disc-body">LIGO-Virgo-KAGRA ont capté la première fusion confirmée entre une étoile à neutrons de 1,2 M☉ et un trou noir de 2,5 M☉, ouvrant une nouvelle fenêtre sur la nucléosynthèse des métaux lourds.</div>
+        <div class="disc-date">📅 LIGO Collaboration · Mai 2024</div>
+      </div>
+      <div class="disc-card">
+        <div class="disc-tag tag-img">🌌 Imagerie Profonde</div>
+        <div class="disc-title">Pilliers de la Création — Résolution Record</div>
+        <div class="disc-body">La caméra NIRCam de Webb a révélé des proto-étoiles en formation active au sommet des Pilliers de la Création dans M16, à une résolution 10× supérieure à Hubble. Des disques protoplanétaires y sont visibles.</div>
+        <div class="disc-date">📅 NASA/ESA/CSA · 2023</div>
+      </div>
+      <div class="disc-card">
+        <div class="disc-tag tag-neo">☄️ Impact Planétaire</div>
+        <div class="disc-title">DART — Déviation d'Astéroïde Réussie</div>
+        <div class="disc-body">La mission DART (Double Asteroid Redirection Test) a modifié avec succès l'orbite de Dimorphos de 33 minutes. Première démonstration de défense planétaire active. LICIACube a capturé l'impact depuis l'espace.</div>
+        <div class="disc-date">📅 NASA · Septembre 2022</div>
+      </div>
+      <div class="disc-card">
+        <div class="disc-tag tag-exo">🔭 Spectroscopie</div>
+        <div class="disc-title">K2-18b — Détection de Diméthylsulfure (DMS)</div>
+        <div class="disc-body">James Webb a trouvé de possibles traces de DMS dans l'atmosphère de K2-18b, une sous-Neptune de la zone habitable à 120 années-lumière. Sur Terre, ce gaz est produit exclusivement par des micro-organismes marins.</div>
+        <div class="disc-date">📅 Cambridge/NASA · 2023</div>
+      </div>
+      <div class="disc-card">
+        <div class="disc-tag tag-grav">⚫ Trou Noir</div>
+        <div class="disc-title">Sagittarius A* — Première Image Directe</div>
+        <div class="disc-body">L'Event Horizon Telescope a produit la première image du trou noir central de notre galaxie, avec une masse de 4 millions de Soleils. Son ombre de 52 μas confirme les prédictions de la relativité générale à 1,5 % près.</div>
+        <div class="disc-date">📅 EHT Collaboration · Mai 2022</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL: MISSIONS -->
+  <div id="panel-missions" class="panel">
+    <div class="section-title">Missions Spatiales Actives</div>
+    <div class="missions-grid">
+
+      <div class="mission-card">
+        <div class="mission-header">
+          <div class="mission-icon">🔭</div>
+          <div><div class="mission-name">James Webb Space Telescope</div><div class="mission-agency">NASA / ESA / CSA</div></div>
+        </div>
+        <div class="mission-status status-active">● Opérationnel</div>
+        <div class="mission-body">Observatoire infrarouge en orbite au point de Lagrange L2, à 1,5 million de km de la Terre. Révolutionne notre compréhension des premières galaxies, des atmosphères d'exoplanètes et de la formation stellaire.</div>
+        <div class="mission-stats">
+          <div class="m-stat"><div class="m-stat-label">Lancement</div><div class="m-stat-value">25 déc. 2021</div></div>
+          <div class="m-stat"><div class="m-stat-label">Orbite</div><div class="m-stat-value">L2 (1,5M km)</div></div>
+          <div class="m-stat"><div class="m-stat-label">Miroir</div><div class="m-stat-value">6,5 m</div></div>
+        </div>
+      </div>
+
+      <div class="mission-card">
+        <div class="mission-header">
+          <div class="mission-icon">🚀</div>
+          <div><div class="mission-name">Station Spatiale Internationale</div><div class="mission-agency">NASA / Roscosmos / ESA / JAXA / CSA</div></div>
+        </div>
+        <div class="mission-status status-active">● Opérationnel</div>
+        <div class="mission-body">Laboratoire orbital en microgravité à 408 km d'altitude. Accueille en continu des équipages internationaux depuis novembre 2000. Orbite la Terre toutes les 92 minutes à 27 600 km/h.</div>
+        <div class="mission-stats">
+          <div class="m-stat"><div class="m-stat-label">Altitude</div><div class="m-stat-value">~408 km</div></div>
+          <div class="m-stat"><div class="m-stat-label">Vitesse</div><div class="m-stat-value">27 600 km/h</div></div>
+          <div class="m-stat"><div class="m-stat-label">En orbite depuis</div><div class="m-stat-value">1998</div></div>
+        </div>
+      </div>
+
+      <div class="mission-card">
+        <div class="mission-header">
+          <div class="mission-icon">🤖</div>
+          <div><div class="mission-name">Perseverance + Ingenuity</div><div class="mission-agency">NASA / JPL</div></div>
+        </div>
+        <div class="mission-status status-active">● Actif sur Mars</div>
+        <div class="mission-body">Rover de la taille d'une voiture explorant le cratère Jezero (ancien lac martien). Prélève des carottes de roche pour un futur retour sur Terre. Ingenuity a réalisé plus de 70 vols sur Mars, premier aéronef extraterrestre.</div>
+        <div class="mission-stats">
+          <div class="m-stat"><div class="m-stat-label">Lancement</div><div class="m-stat-value">30 juil. 2020</div></div>
+          <div class="m-stat"><div class="m-stat-label">Atterrissage</div><div class="m-stat-value">18 fév. 2021</div></div>
+          <div class="m-stat"><div class="m-stat-label">Distance parcourue</div><div class="m-stat-value">&gt;25 km</div></div>
+        </div>
+      </div>
+
+      <div class="mission-card">
+        <div class="mission-header">
+          <div class="mission-icon">☀️</div>
+          <div><div class="mission-name">Parker Solar Probe</div><div class="mission-agency">NASA / JHUAPL</div></div>
+        </div>
+        <div class="mission-status status-active">● Actif</div>
+        <div class="mission-body">La sonde la plus rapide jamais construite (690 000 km/h) plonge dans la couronne solaire. A franchi la couronne magnétique en 2021, à 8,5 rayons solaires de la surface. Étudie le vent solaire à la source.</div>
+        <div class="mission-stats">
+          <div class="m-stat"><div class="m-stat-label">Lancement</div><div class="m-stat-value">12 août 2018</div></div>
+          <div class="m-stat"><div class="m-stat-label">Vitesse max</div><div class="m-stat-value">690 000 km/h</div></div>
+          <div class="m-stat"><div class="m-stat-label">Distance min ☀️</div><div class="m-stat-value">6,1M km</div></div>
+        </div>
+      </div>
+
+      <div class="mission-card">
+        <div class="mission-header">
+          <div class="mission-icon">🌙</div>
+          <div><div class="mission-name">Programme Artemis</div><div class="mission-agency">NASA / ESA / JAXA / CSA</div></div>
+        </div>
+        <div class="mission-status status-progress">◐ En développement</div>
+        <div class="mission-body">Programme de retour humain sur la Lune. Artemis I (2022) a testé avec succès SLS et Orion. Artemis II enverra 4 astronautes autour de la Lune. Artemis III prévoit d'atterrir près du pôle Sud lunaire.</div>
+        <div class="mission-stats">
+          <div class="m-stat"><div class="m-stat-label">Artemis I</div><div class="m-stat-value">Nov. 2022 ✓</div></div>
+          <div class="m-stat"><div class="m-stat-label">Artemis II</div><div class="m-stat-value">2025</div></div>
+          <div class="m-stat"><div class="m-stat-label">Artemis III</div><div class="m-stat-value">2026</div></div>
+        </div>
+      </div>
+
+      <div class="mission-card">
+        <div class="mission-header">
+          <div class="mission-icon">🧊</div>
+          <div><div class="mission-name">Europa Clipper</div><div class="mission-agency">NASA / JPL</div></div>
+        </div>
+        <div class="mission-status status-deep">→ En transit</div>
+        <div class="mission-body">Sonde en route vers Europe, lune de Jupiter, pour étudier son océan souterrain d'eau liquide. Effectuera 49 survols pour cartographier la surface glacée et chercher des conditions propices à la vie.</div>
+        <div class="mission-stats">
+          <div class="m-stat"><div class="m-stat-label">Lancement</div><div class="m-stat-value">14 oct. 2024</div></div>
+          <div class="m-stat"><div class="m-stat-label">Arrivée Jupiter</div><div class="m-stat-value">Avr. 2030</div></div>
+          <div class="m-stat"><div class="m-stat-label">Distance ocean</div><div class="m-stat-value">~10 km</div></div>
+        </div>
+      </div>
+
+      <div class="mission-card">
+        <div class="mission-header">
+          <div class="mission-icon">🛸</div>
+          <div><div class="mission-name">Voyager 1 & 2</div><div class="mission-agency">NASA / JPL</div></div>
+        </div>
+        <div class="mission-status status-deep">★ Espace Interstellaire</div>
+        <div class="mission-body">Lancées en 1977, les sondes Voyager sont les objets humains les plus lointains de l'Univers. Voyager 1 se trouve à plus de 23 milliards de km du Soleil, transmettant encore des données à 160 bits/s.</div>
+        <div class="mission-stats">
+          <div class="m-stat"><div class="m-stat-label">Lancement</div><div class="m-stat-value">1977</div></div>
+          <div class="m-stat"><div class="m-stat-label">Distance V1</div><div class="m-stat-value">&gt;23 Mds km</div></div>
+          <div class="m-stat"><div class="m-stat-label">Âge</div><div class="m-stat-value">47 ans</div></div>
+        </div>
+      </div>
+
+      <div class="mission-card">
+        <div class="mission-header">
+          <div class="mission-icon">🌠</div>
+          <div><div class="mission-name">Euclid</div><div class="mission-agency">ESA</div></div>
+        </div>
+        <div class="mission-status status-active">● Opérationnel</div>
+        <div class="mission-body">Télescope spatial de l'ESA cartographiant la géométrie de l'Univers sombre. Étudiera 1,5 milliard de galaxies pour comprendre l'énergie noire et la matière noire qui composent 95 % de l'Univers.</div>
+        <div class="mission-stats">
+          <div class="m-stat"><div class="m-stat-label">Lancement</div><div class="m-stat-value">1 juil. 2023</div></div>
+          <div class="m-stat"><div class="m-stat-label">Orbite</div><div class="m-stat-value">L2</div></div>
+          <div class="m-stat"><div class="m-stat-label">Galaxies cibles</div><div class="m-stat-value">1,5 milliard</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PANEL: APOD -->
+  <div id="panel-apod" class="panel">
+    <div id="apod-img-wrap">
+      <div class="apod-loading" id="apod-loading">
+        <div class="spinner"></div>
+        <span>Connexion à NASA APOD…</span>
+      </div>
+      <img id="apod-img" style="display:none" alt="NASA APOD">
+      <iframe id="apod-video" style="display:none" allow="fullscreen"></iframe>
+    </div>
+    <div id="apod-sidebar">
+      <div class="apod-date" id="apod-date">—</div>
+      <div class="apod-title" id="apod-title">Photo Astronomique du Jour</div>
+      <div class="apod-copyright" id="apod-copyright"></div>
+      <div class="pi-divider"></div>
+      <div class="apod-explanation" id="apod-explanation">Chargement depuis l'API NASA…</div>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  STARFIELD
+// ═══════════════════════════════════════════════════════
+(function() {
+  const c = document.getElementById('starfield');
+  const ctx = c.getContext('2d');
+  let stars = [];
+  function init() {
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+    stars = [];
+    const n = Math.floor((c.width * c.height) / 5000);
+    for (let i = 0; i < n; i++) {
+      stars.push({
+        x: Math.random() * c.width,
+        y: Math.random() * c.height,
+        r: Math.random() * 1.2 + 0.1,
+        a: Math.random(),
+        da: (Math.random() - 0.5) * 0.005
+      });
+    }
+  }
+  function draw() {
+    ctx.clearRect(0, 0, c.width, c.height);
+    for (const s of stars) {
+      s.a += s.da;
+      if (s.a < 0.1 || s.a > 1) s.da = -s.da;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(180,220,255,${s.a})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  init();
+  draw();
+  window.addEventListener('resize', init);
+})();
+
+// ═══════════════════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  const d = now.toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+  const t = now.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  document.getElementById('clock').textContent = `${d} · ${t} UTC${now.getTimezoneOffset() <= 0 ? '+' : ''}${-now.getTimezoneOffset()/60}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ═══════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════
+const tabs = document.querySelectorAll('.tab');
+const panels = document.querySelectorAll('.panel');
+let apodLoaded = false;
+
+tabs.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    panels.forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const id = 'panel-' + btn.dataset.tab;
+    document.getElementById(id).classList.add('active');
+    if (btn.dataset.tab === 'apod' && !apodLoaded) {
+      loadAPOD();
+      apodLoaded = true;
+    }
+    if (btn.dataset.tab === 'systeme') {
+      setTimeout(resizeSolar, 50);
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+//  ISS TRACKER
+// ═══════════════════════════════════════════════════════
+async function fetchISS() {
+  try {
+    const r = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
+    const d = await r.json();
+    const lat = parseFloat(d.latitude).toFixed(2);
+    const lon = parseFloat(d.longitude).toFixed(2);
+    const latStr = lat >= 0 ? `${lat}°N` : `${Math.abs(lat)}°S`;
+    const lonStr = lon >= 0 ? `${lon}°E` : `${Math.abs(lon)}°W`;
+    document.getElementById('iss-coords').textContent = `Latitude ${latStr}, Longitude ${lonStr}`;
+    document.getElementById('iss-alt').textContent = parseFloat(d.altitude).toFixed(0);
+    document.getElementById('iss-vel').textContent = Math.round(parseFloat(d.velocity)).toLocaleString('fr-FR');
+  } catch (e) {
+    document.getElementById('iss-coords').textContent = 'Données temporairement indisponibles';
+  }
+}
+fetchISS();
+setInterval(fetchISS, 10000);
+
+// ═══════════════════════════════════════════════════════
+//  NEO DATA
+// ═══════════════════════════════════════════════════════
+async function fetchNEO() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const r = await fetch(`https://api.nasa.gov/neo/rest/v1/feed?start_date=${today}&end_date=${today}&api_key=DEMO_KEY`);
+    const d = await r.json();
+    const neos = d.near_earth_objects[today] || [];
+    const hazardous = neos.filter(n => n.is_potentially_hazardous_asteroid);
+    let txt = '';
+    if (neos.length > 0) {
+      txt = `${neos.length} objet${neos.length>1?'s':''} géocroiseur${neos.length>1?'s':''} détecté${neos.length>1?'s':''} aujourd'hui`;
+      if (hazardous.length > 0) {
+        txt += ` — dont <span style="color:#f74d8a;font-weight:600">${hazardous.length} potentiellement dangereux</span>`;
+        const closest = hazardous.sort((a,b) => parseFloat(a.close_approach_data[0].miss_distance.kilometers) - parseFloat(b.close_approach_data[0].miss_distance.kilometers))[0];
+        const dist = Math.round(parseFloat(closest.close_approach_data[0].miss_distance.kilometers)).toLocaleString('fr-FR');
+        txt += ` · Le plus proche : <b>${closest.name}</b> à ${dist} km`;
+      }
+    } else {
+      txt = 'Aucun objet significatif détecté aujourd\'hui';
+    }
+    document.getElementById('neo-list').innerHTML = txt;
+  } catch(e) {
+    document.getElementById('neo-list').textContent = 'Données NASA temporairement indisponibles (limite API atteinte)';
+  }
+}
+fetchNEO();
+
+// ═══════════════════════════════════════════════════════
+//  APOD
+// ═══════════════════════════════════════════════════════
+async function loadAPOD() {
+  try {
+    const r = await fetch('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY');
+    const d = await r.json();
+    document.getElementById('apod-loading').style.display = 'none';
+    const dateStr = new Date(d.date).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    document.getElementById('apod-date').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+    document.getElementById('apod-title').textContent = d.title;
+    if (d.copyright) document.getElementById('apod-copyright').textContent = '© ' + d.copyright.replace('\n',' ');
+    document.getElementById('apod-explanation').textContent = d.explanation;
+    if (d.media_type === 'video') {
+      const v = document.getElementById('apod-video');
+      v.src = d.url;
+      v.style.display = 'block';
+    } else {
+      const img = document.getElementById('apod-img');
+      img.src = d.hdurl || d.url;
+      img.style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('apod-loading').innerHTML = '<div style="text-align:center;color:var(--text2)"><div style="font-size:2rem;margin-bottom:10px">🌌</div><div>API NASA temporairement indisponible<br><small>Réessayez dans quelques instants</small></div></div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  SOLAR SYSTEM
+// ═══════════════════════════════════════════════════════
+const PLANETS = [
+  { name: 'Mercure', color: '#a8a8b0', orbitR: 52,  size: 3,   period: 87.97,    L0: 252.25,
+    info: { distance: '57,9 M km', diameter: '4 879 km', temp: '-180°C / +430°C', moons: '0',
+            fact: 'Une année dure 88 jours terrestres. En raison de sa rotation lente, un jour mercurien (176 jours terrestres) est plus long qu\'une année.' }},
+  { name: 'Vénus',   color: '#e8c87a', orbitR: 80,  size: 5,   period: 224.70,   L0: 181.98,
+    info: { distance: '108,2 M km', diameter: '12 104 km', temp: '+465°C (constante)', moons: '0',
+            fact: 'La planète la plus chaude du système solaire malgré sa distance au Soleil. Son effet de serre runaway est un avertissement pour le changement climatique terrestre.' }},
+  { name: 'Terre',   color: '#4ab0ff', orbitR: 115, size: 5,   period: 365.25,   L0: 100.46,
+    info: { distance: '149,6 M km', diameter: '12 742 km', temp: '-88°C / +58°C', moons: '1',
+            fact: 'La seule planète connue à abriter la vie. L\'eau liquide couvre 71% de la surface. La Lune stabilise l\'axe de rotation, permettant un climat favorable à la vie complexe.' }},
+  { name: 'Mars',    color: '#d4583a', orbitR: 156, size: 4,   period: 686.97,   L0: 355.43,
+    info: { distance: '227,9 M km', diameter: '6 779 km', temp: '-153°C / +20°C', moons: '2',
+            fact: 'Olympus Mons sur Mars est le plus grand volcan du système solaire (27 km de haut, 3× l\'Everest). Des traces d\'eau liquide passée y ont été confirmées.' }},
+  { name: 'Jupiter', color: '#c4945a', orbitR: 220, size: 14,  period: 4332.59,  L0: 34.40,
+    info: { distance: '778,5 M km', diameter: '139 820 km', temp: '-110°C (nuages)', moons: '95',
+            fact: 'La Grande Tache Rouge est une tempête anticyclonique active depuis au moins 350 ans. Jupiter agit comme un bouclier, déviant les astéroïdes avec son champ gravitationnel.' }},
+  { name: 'Saturne', color: '#e8d882', orbitR: 285, size: 11,  period: 10759.22, L0: 49.94,  rings: true,
+    info: { distance: '1 432 M km', diameter: '116 460 km', temp: '-178°C (nuages)', moons: '146',
+            fact: 'Les anneaux de Saturne s\'étendent sur 282 000 km mais ne font que 10 à 100 mètres d\'épaisseur. Ils disparaîtront dans ~100 millions d\'années, absorbés par la planète.' }},
+  { name: 'Uranus',  color: '#80e8e0', orbitR: 345, size: 8,   period: 30688.5,  L0: 313.23,
+    info: { distance: '2 867 M km', diameter: '50 724 km', temp: '-224°C', moons: '28',
+            fact: 'Uranus orbite le Soleil "couchée sur le côté" avec une inclinaison axiale de 98°. Cela crée des saisons extrêmes de 21 ans chacune, alternant entre nuit et jour polaire continus.' }},
+  { name: 'Neptune', color: '#3870e8', orbitR: 400, size: 8,   period: 60182,    L0: 304.88,
+    info: { distance: '4 495 M km', diameter: '49 244 km', temp: '-214°C', moons: '16',
+            fact: 'Neptune possède les vents les plus violents du système solaire, atteignant 2 100 km/h. Sa lune Triton orbite en sens inverse et se rapproche inexorablement — elle sera détruite dans 3,6 milliards d\'années.' }}
+];
+
+const J2000 = new Date('2000-01-01T12:00:00Z');
+function getDays(date) { return (date - J2000) / 86400000; }
+function getPlanetAngle(p, date) {
+  const d = getDays(date);
+  return ((p.L0 + (360 / p.period) * d) % 360) * Math.PI / 180;
+}
+
+const canvas = document.getElementById('solarCanvas');
+const ctx2 = canvas.getContext('2d');
+let simTime = Date.now();
+let speedMult = 1;
+let selectedPlanet = null;
+let hoveredPlanet = null;
+let W = 0, H = 0, cx = 0, cy = 0;
+let animId = null;
+
+function resizeSolar() {
+  const wrap = document.getElementById('canvas-wrap');
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  canvas.width = W;
+  canvas.height = H;
+  cx = W / 2;
+  cy = H / 2;
+}
+
+function drawSolar() {
+  ctx2.clearRect(0, 0, W, H);
+  const now = new Date(simTime);
+
+  // Sun glow
+  const sunGlow = ctx2.createRadialGradient(cx, cy, 0, cx, cy, 55);
+  sunGlow.addColorStop(0, 'rgba(255,200,60,0.9)');
+  sunGlow.addColorStop(0.3, 'rgba(255,140,20,0.6)');
+  sunGlow.addColorStop(0.7, 'rgba(255,80,0,0.15)');
+  sunGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx2.beginPath();
+  ctx2.arc(cx, cy, 55, 0, Math.PI * 2);
+  ctx2.fillStyle = sunGlow;
+  ctx2.fill();
+
+  // Sun core
+  const sunCore = ctx2.createRadialGradient(cx-4, cy-4, 0, cx, cy, 18);
+  sunCore.addColorStop(0, '#fff9e0');
+  sunCore.addColorStop(0.4, '#ffd040');
+  sunCore.addColorStop(1, '#ff8800');
+  ctx2.beginPath();
+  ctx2.arc(cx, cy, 18, 0, Math.PI * 2);
+  ctx2.fillStyle = sunCore;
+  ctx2.fill();
+
+  // Asteroid belt
+  ctx2.save();
+  for (let i = 0; i < 280; i++) {
+    const angle = (i / 280) * Math.PI * 2 + simTime * 0.000002;
+    const r = 175 + (Math.sin(i * 37.3) * 12);
+    const x = cx + Math.cos(angle) * r;
+    const y = cy + Math.sin(angle) * r;
+    ctx2.beginPath();
+    ctx2.arc(x, y, 0.6 + Math.sin(i*17)*0.4, 0, Math.PI * 2);
+    ctx2.fillStyle = 'rgba(180,160,120,0.4)';
+    ctx2.fill();
+  }
+  ctx2.restore();
+
+  PLANETS.forEach((p, i) => {
+    const angle = getPlanetAngle(p, now);
+    const px = cx + Math.cos(angle) * p.orbitR;
+    const py = cy + Math.sin(angle) * p.orbitR;
+
+    // Orbit ring
+    ctx2.beginPath();
+    ctx2.arc(cx, cy, p.orbitR, 0, Math.PI * 2);
+    const isSelected = selectedPlanet === i || hoveredPlanet === i;
+    ctx2.strokeStyle = isSelected ? `rgba(77,195,247,0.35)` : 'rgba(77,195,247,0.1)';
+    ctx2.lineWidth = isSelected ? 1.2 : 0.5;
+    ctx2.stroke();
+
+    // Saturn rings
+    if (p.rings) {
+      ctx2.save();
+      ctx2.translate(px, py);
+      ctx2.rotate(angle + 0.5);
+      ctx2.scale(1, 0.38);
+      ctx2.beginPath();
+      ctx2.arc(0, 0, p.size + 10, 0, Math.PI * 2);
+      ctx2.strokeStyle = 'rgba(232,216,130,0.55)';
+      ctx2.lineWidth = 5;
+      ctx2.stroke();
+      ctx2.beginPath();
+      ctx2.arc(0, 0, p.size + 17, 0, Math.PI * 2);
+      ctx2.strokeStyle = 'rgba(232,216,130,0.3)';
+      ctx2.lineWidth = 3;
+      ctx2.stroke();
+      ctx2.restore();
+    }
+
+    // Planet glow
+    if (isSelected || hoveredPlanet === i) {
+      const g = ctx2.createRadialGradient(px, py, 0, px, py, p.size + 14);
+      g.addColorStop(0, p.color + '55');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx2.beginPath();
+      ctx2.arc(px, py, p.size + 14, 0, Math.PI * 2);
+      ctx2.fillStyle = g;
+      ctx2.fill();
+    }
+
+    // Planet body
+    const pg = ctx2.createRadialGradient(px - p.size * 0.3, py - p.size * 0.3, 0, px, py, p.size);
+    pg.addColorStop(0, '#fff');
+    pg.addColorStop(0.15, p.color);
+    pg.addColorStop(1, p.color + '88');
+    ctx2.beginPath();
+    ctx2.arc(px, py, p.size, 0, Math.PI * 2);
+    ctx2.fillStyle = pg;
+    ctx2.fill();
+
+    // Label
+    if (p.size >= 5 || hoveredPlanet === i || selectedPlanet === i) {
+      ctx2.font = `${hoveredPlanet === i || selectedPlanet === i ? 600 : 400} ${hoveredPlanet === i || selectedPlanet === i ? '10' : '9'}px Sora, sans-serif`;
+      ctx2.fillStyle = isSelected ? '#4dc3f7' : 'rgba(200,230,245,0.7)';
+      ctx2.textAlign = 'center';
+      ctx2.fillText(p.name, px, py - p.size - 7);
+    }
+    p._px = px;
+    p._py = py;
+  });
+}
+
+// Mouse interaction
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  hoveredPlanet = null;
+  PLANETS.forEach((p, i) => {
+    const dx = mx - p._px, dy = my - p._py;
+    if (Math.sqrt(dx*dx+dy*dy) < p.size + 8) hoveredPlanet = i;
+  });
+  canvas.style.cursor = hoveredPlanet !== null ? 'pointer' : 'default';
+});
+
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  let clicked = null;
+  PLANETS.forEach((p, i) => {
+    const dx = mx - p._px, dy = my - p._py;
+    if (Math.sqrt(dx*dx+dy*dy) < p.size + 10) clicked = i;
+  });
+  selectedPlanet = (clicked === selectedPlanet) ? null : clicked;
+  updatePlanetInfo();
+});
+
+function updatePlanetInfo() {
+  const el = document.getElementById('planet-info');
+  if (selectedPlanet === null) {
+    el.classList.add('empty');
+    el.innerHTML = `
+      <div class="pi-name">Système Solaire</div>
+      <div class="pi-subtitle">Cliquez sur une planète pour explorer</div>
+      <div class="pi-divider"></div>
+      <div class="pi-fact"><b>✦ Le Saviez-vous ?</b>Notre système solaire a 4,6 milliards d'années. Le Soleil contient 99,86 % de toute la masse du système.</div>
+      <div class="pi-fact"><b>✦ Échelle</b>Si le Soleil avait la taille d'une porte standard, Jupiter serait un pamplemousse à 300 m de distance — et la Terre un petit pois à 26 m.</div>
+      <div class="pi-hint">↑ Utilisez les boutons de vitesse pour accélérer le temps</div>`;
+    return;
+  }
+  el.classList.remove('empty');
+  const p = PLANETS[selectedPlanet];
+  const inf = p.info;
+  el.innerHTML = `
+    <div class="pi-name" style="color:${p.color}">${p.name}</div>
+    <div class="pi-subtitle">${ordinalPlanet(selectedPlanet + 1)} planète du système solaire</div>
+    <div class="pi-divider"></div>
+    <div class="pi-grid">
+      <div class="pi-stat"><div class="pi-stat-label">Distance au Soleil</div><div class="pi-stat-value">${inf.distance}</div></div>
+      <div class="pi-stat"><div class="pi-stat-label">Diamètre</div><div class="pi-stat-value">${inf.diameter}</div></div>
+      <div class="pi-stat"><div class="pi-stat-label">Température</div><div class="pi-stat-value">${inf.temp}</div></div>
+      <div class="pi-stat"><div class="pi-stat-label">Lunes</div><div class="pi-stat-value">${inf.moons}</div></div>
+      <div class="pi-stat"><div class="pi-stat-label">Période orbitale</div><div class="pi-stat-value">${formatPeriod(p.period)}</div></div>
+      <div class="pi-stat"><div class="pi-stat-label">Indice orbital</div><div class="pi-stat-value">#${selectedPlanet+1}</div></div>
+    </div>
+    <div class="pi-fact"><b>✦ Fait Remarquable</b>${inf.fact}</div>`;
+}
+
+function ordinalPlanet(n) {
+  return n === 1 ? '1ère' : `${n}ème`;
+}
+function formatPeriod(days) {
+  if (days < 365) return `${days.toFixed(0)} jours`;
+  const y = (days/365.25).toFixed(1);
+  return `${y} ans (${Math.round(days)}j)`;
+}
+
+// Build legend
+const legEl = document.getElementById('legend');
+PLANETS.forEach((p, i) => {
+  const item = document.createElement('div');
+  item.className = 'leg-item';
+  item.innerHTML = `<div class="leg-dot" style="background:${p.color}"></div>${p.name}`;
+  item.addEventListener('click', () => {
+    selectedPlanet = selectedPlanet === i ? null : i;
+    updatePlanetInfo();
+  });
+  legEl.appendChild(item);
+});
+
+// Speed buttons
+document.querySelectorAll('.spd-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.spd-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    speedMult = parseInt(btn.dataset.speed);
+  });
+});
+
+// Animation loop
+let last = performance.now();
+function tick(now) {
+  const dt = (now - last) / 1000;
+  last = now;
+  simTime += dt * speedMult * 1000;
+  drawSolar();
+  animId = requestAnimationFrame(tick);
+}
+
+// Init solar on load
+resizeSolar();
+requestAnimationFrame(tick);
+window.addEventListener('resize', () => {
+  resizeSolar();
+});
+</script>
+</body>
+</html>
