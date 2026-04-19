@@ -103,7 +103,7 @@ body{background:#000;overflow:hidden;font-family:'Sora',sans-serif;color:#c8e6f5
 #load-sub{font-size:11px;color:rgba(200,230,245,.35);letter-spacing:2px}
 #load-bar{width:180px;height:2px;background:rgba(77,195,247,.1);border-radius:2px;margin-top:20px;overflow:hidden}
 #load-fill{width:0;height:100%;background:#4dc3f7;transition:width .25s}
-.lbl{position:absolute;pointer-events:none;font-size:10px;font-family:'Sora',sans-serif;white-space:nowraw;transform:translate(-50%,-100%);padding-bottom:3px;text-shadow:0 0 6px rgba(0,0,0,1);z-index:10}
+.lbl{position:absolute;pointer-events:none;font-size:10px;font-family:'Sora',sans-serif;white-space:nowrap;transform:translate(-50%,-100%);padding-bottom:3px;text-shadow:0 0 6px rgba(0,0,0,1);z-index:10}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:rgba(77,195,247,.2)}
 
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
@@ -220,12 +220,11 @@ body{background:#000;overflow:hidden;font-family:'Sora',sans-serif;color:#c8e6f5
   }
   window.addEventListener('error',function(){setTimeout(forceHide,400);},{capture:true});
   window._forceHideLoader=forceHide;
-  setTimeout(forceHide,700); // timeout de secours 7s
+  setTimeout(forceHide,7000); // timeout de secours 7s
 })();
 </script>
 <script>
 // â”€â”€â”€ DATA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 const J2000 = new Date('2000-01-01T12:00:00Z');
 
 const PLANETS = [
@@ -276,7 +275,7 @@ const STAR_SYSTEMS = [
    stars:[{name:'Rigel A',col:'#b8d8ff',sz:18,off:[0,0,0]},{name:'Rigel B',col:'#d0e0ff',sz:6,off:[48,0,0]}],
    info:{distance:'860 al',type:'SupergÃ©ante bleue B8Ia',constellation:'Orion',
    fact:'78 000 fois plus lumineuse que le Soleil. L\'une des Ã©toiles les plus massives connues. Si elle Ã©tait Ã  la place de Sirius, elle rivaliserait avec la Lune en luminositÃ©.'}},
-  {name:'Tau Ceti',cos:[310,-100,940],color:'#fff0d0',
+  {name:'Tau Ceti',pos:[310,-100,940],color:'#fff0d0',
    stars:[{name:'Tau Ceti',col:'#fff0d0',sz:7,off:[0,0,0]}],
    info:{distance:'11,9 al',type:'Ã‰toile G8.5V',constellation:'Baleine',
    fact:'Similaire au Soleil avec une masse de 78% la sienne. PossÃ¨de au moins 4 exoplanÃ¨tes confirmÃ©es. Tau Ceti e et f sont dans la zone habitable mais soumises Ã  une intense activitÃ© stellaire.'}},
@@ -304,7 +303,7 @@ const NEBULAE = [
    fact:'La pÃ©piniÃ¨re d\'Ã©toiles la plus proche et la mieux Ã©tudiÃ©e. Visible Ã  l\'Å“il nu. Abrite le TrapÃ¨ze â€” un amas de jeunes Ã©toiles massives illuminant le gaz environnant.'}},
   {name:'NÃ©buleuse de l\'Aigle',pos:[-750,520,2300],r:260,c1:'#3355ff',c2:'#4488ff',n:2500,
    info:{distance:'7 000 al',type:'NÃ©buleuse en Ã©mission',constellation:'Serpent',
-   fact:'CÃ©lÃ¨bre pour les "Piliers de la CrÃ©ation" photographiÇ¤Á…È!Õ‰‰±”•¸€ÄääÔÁÕ¥Ì•¸€ÈÀÄÔ¸•Ì½±½¹¹•Ì‘”…è‘”Á±ÕÍ¥•ÕÉÌ…¹»¥•Ìµ±Õµ§¡É”Í½¹Ð‘•ÌË¡¡•Ì stellaires actives.'}},
+   fact:'CÃ©lÃ¨bre pour les "Piliers de la CrÃ©ation" photographiÃ©s par Hubble en 1995 puis en 2015. Ces colonnes de gaz de plusieurs annÃ©es-lumiÃ¨re sont des crÃ¨ches stellaires actives.'}},
   {name:'NÃ©buleuse du Crabe',pos:[1300,320,-1900],r:130,c1:'#ff44aa',c2:'#cc22ff',n:1600,
    info:{distance:'6 500 al',type:'RÃ©manent de supernova',constellation:'Taureau',
    fact:'RÃ©sidu de la supernova SN 1054 observÃ©e par des astronomes chinois et arabes. Contient un pulsar (Ã©toile Ã  neutrons) tournant 30 fois par seconde et irradiant l\'espace environnant.'}},
@@ -397,7 +396,7 @@ const sunMesh=(function(){
   const m=new THREE.MeshBasicMaterial({color:0xfff8e0});
   const mesh=new THREE.Mesh(g,m);
   mesh.userData={type:'star',name:'Soleil',color:'#ffd090',
-    info:{type:'Ã‰toile naine jaune G2V',distance:'0',diameter:'1 392 700 km',temp:'5 778 K (surface) / 15 M K 'cÅ“ur)',moons:'8 planÃ¨tes',
+    info:{type:'Ã‰toile naine jaune G2V',distance:'0',diameter:'1 392 700 km',temp:'5 778 K (surface) / 15 M K (cÅ“ur)',moons:'8 planÃ¨tes',
     fact:'Le Soleil contient 99,86% de la masse du systÃ¨me solaire. En son cÅ“ur, 620 millions de tonnes d\'hydrogÃ¨ne fusionnent chaque seconde pour produire de l\'hÃ©lium. Il est Ã¢gÃ© de 4,6 milliards d\'annÃ©es.'}};
   scene.add(mesh);
   // outer glow (circular texture)
@@ -501,7 +500,7 @@ NEBULAE.forEach(neb=>{
   const pos=new Float32Array(neb.n*3),col=new Float32Array(neb.n*3);
   const c1=new THREE.Color(neb.c1),c2=new THREE.Color(neb.c2);
   for(let i=0;i<neb.n;i++){
-    const r=Math.pow(Math.random(),.5)*neb.r,th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
+    const r:Math.pow(Math.random(),.5)*neb.r,th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
     pos[i*3]=r*Math.sin(ph)*Math.cos(th);pos[i*3+1]=r*Math.sin(ph)*Math.sin(th)*.5;pos[i*3+2]=r*Math.cos(ph);
     const t=Math.random();col[i*3]=c1.r+(c2.r-c1.r)*t;col[i*3+1]=c1.g+(c2.g-c1.g)*t;col[i*3+2]=c1.b+(c2.b-c1.b)*t;
   }
